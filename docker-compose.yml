@@ -1,0 +1,36 @@
+services:
+  jartcentre-agent:
+    container_name: jartcentre-agent
+    image: ghcr.io/tom-bass/jartcentre-agent:latest
+    network_mode: host          # required for librespot mDNS and snapclient
+    cap_add:
+      - SYS_BOOT                # enables /system/reboot endpoint
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - agent_data:/data                              # persists config.json across restarts
+      - /:/hostfs:ro                                  # host filesystem for disk metrics
+      - /var/run/docker.sock:/var/run/docker.sock     # Docker management + update
+    environment:
+      - CONTAINER_NAME=jartcentre-agent    # used by the Update Now endpoint
+      - IMAGE_NAME=ghcr.io/tom-bass/jartcentre-agent:latest
+      - GITHUB_REPO=Tom-bass/jartcentre-agent
+      - DISK_ROOT=/hostfs                  # report host disk, not container fs
+      # Optional — set here for fleet deployments, or configure via the web UI
+      # - SNAPCAST_HOST=192.168.x.x
+      # - AGENT_API_KEY=                   # generate: openssl rand -hex 32
+      # Optional — for checking GitHub for updates (avoids rate limiting)
+      # - GITHUB_TOKEN=ghp_...
+      # Optional — override Spotify/Snapcast device name (or set it in the web UI)
+      # - DEVICE_NAME=living-room-pi
+      # Optional — override audio device (or set it in the web UI)
+      # - LIBRESPOT_DEVICE=plughw:Device,0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  agent_data:

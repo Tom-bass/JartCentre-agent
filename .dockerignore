@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+README.md
+SECURITY.md
+LICENSE
+docker-compose.yml
+.env.example
+tests/
+pyproject.toml

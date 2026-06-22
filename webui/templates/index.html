@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JartCentre Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 1rem 2rem;
+    }
+    .header-top {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 0.625rem;
+    }
+    header h1 { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+    #header-device { font-size: 0.875rem; color: #94a3b8; }
+
+    .health-strip {
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .health-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      color: #94a3b8;
+    }
+    .health-item .label { color: #64748b; font-size: 0.75rem; }
+    .health-bar {
+      width: 48px;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .health-bar-fill {
+      height: 100%;
+      background: #6366f1;
+      border-radius: 2px;
+      transition: width 0.6s ease;
+    }
+    .health-bar-fill.warn  { background: #f59e0b; }
+    .health-bar-fill.crit  { background: #ef4444; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 740px;
+      margin: 1.75rem auto;
+      padding: 0 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    }
+    .card-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 0.875rem;
+    }
+
+    /* ── Form rows ── */
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      margin-bottom: 0.75rem;
+    }
+    .field-row:last-child { margin-bottom: 0; }
+    .field-row label {
+      width: 52px;
+      font-size: 0.875rem;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+    .field-row input[type="text"],
+    .field-row select {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      color: #1e293b;
+      background: #fff;
+      outline: none;
+      transition: border-color .15s;
+      min-width: 0;
+    }
+    .field-row input[type="text"]:focus,
+    .field-row select:focus { border-color: #6366f1; }
+
+    .device-hint {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      padding-left: 58px;
+      margin-top: -0.25rem;
+      margin-bottom: 0.25rem;
+      line-height: 1.4;
+      min-height: 1.1rem;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 0.5rem 0.9rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .btn-primary  { background: #6366f1; color: #fff; }
+    .btn-primary:not(:disabled):hover  { background: #4f46e5; }
+    .btn-ghost    { background: #f1f5f9; color: #475569; }
+    .btn-ghost:not(:disabled):hover    { background: #e2e8f0; }
+    .btn-danger   { background: #fef2f2; color: #ef4444; }
+    .btn-danger:not(:disabled):hover   { background: #fee2e2; }
+    .btn-sm { padding: 0.375rem 0.7rem; font-size: 0.8125rem; }
+
+    /* ── Volume slider ── */
+    .vol-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .vol-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      cursor: pointer;
+    }
+    .vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      transition: transform .1s;
+    }
+    .vol-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+    .vol-slider::-moz-range-thumb {
+      width: 18px; height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .vol-label {
+      width: 36px;
+      text-align: right;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #475569;
+      flex-shrink: 0;
+    }
+    .mute-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.125rem;
+      padding: 0.25rem;
+      border-radius: 6px;
+      line-height: 1;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .mute-btn:hover { background: #f1f5f9; }
+    .vol-unsupported {
+      font-size: 0.8125rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* ── Services row ── */
+    .services-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 480px) { .services-row { grid-template-columns: 1fr; } }
+
+    .service-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.875rem;
+    }
+    .service-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .service-name { font-weight: 600; font-size: 0.9375rem; }
+    .service-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Status dot */
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+    .dot.running {
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    .dot.transitioning { background: #f59e0b; }
+    .dot.error         { background: #ef4444; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
+      70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .state-text {
+      font-size: 0.8125rem;
+      color: #64748b;
+    }
+
+    /* Toggle switch */
+    .toggle { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0;
+      background: #cbd5e1; border-radius: 24px; cursor: pointer;
+      transition: background .2s;
+    }
+    .slider::before {
+      content: ""; position: absolute;
+      width: 18px; height: 18px; bottom: 3px; left: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .toggle input:checked + .slider { background: #6366f1; }
+    .toggle input:checked + .slider::before { transform: translateX(18px); }
+    .toggle input:disabled + .slider { opacity: .5; cursor: default; }
+
+    .service-status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.875rem;
+    }
+
+    .divider {
+      height: 1px;
+      background: #f1f5f9;
+      margin: 0.875rem 0;
+    }
+
+    .snapcast-vol-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+    .snapcast-disconnected {
+      font-size: 0.8125rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* ── Update card ── */
+    .update-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .version-info {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      flex-wrap: wrap;
+    }
+    .version-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      color: #475569;
+    }
+    .version-chip code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.8125rem;
+      background: #f1f5f9;
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+    }
+    .update-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+    }
+    .update-badge.available { background: #fef9c3; color: #854d0e; }
+    .update-badge.current   { background: #dcfce7; color: #166534; }
+    .update-badge.unknown   { background: #f1f5f9; color: #64748b; }
+    .update-badge.updating  { background: #eff6ff; color: #1e40af; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e293b; color: #f8fafc;
+      padding: .625rem 1.25rem; border-radius: 8px;
+      font-size: .875rem; pointer-events: none;
+      transition: transform .25s ease, opacity .25s ease;
+      opacity: 0; white-space: nowrap; z-index: 100;
+    }
+    #toast.show   { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error  { background: #ef4444; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>JartCentre Agent</h1>
+    <span id="header-device"></span>
+  </div>
+  <div class="health-strip">
+    <div class="health-item">
+      <span class="label">CPU</span>
+      <div class="health-bar"><div class="health-bar-fill" id="cpu-bar" style="width:0%"></div></div>
+      <span id="cpu-val">—</span>
+    </div>
+    <div class="health-item">
+      <span class="label">RAM</span>
+      <div class="health-bar"><div class="health-bar-fill" id="ram-bar" style="width:0%"></div></div>
+      <span id="ram-val">—</span>
+    </div>
+    <div class="health-item">
+      <span class="label">Disk</span>
+      <div class="health-bar"><div class="health-bar-fill" id="disk-bar" style="width:0%"></div></div>
+      <span id="disk-val">—</span>
+    </div>
+    <div class="health-item">
+      <span id="temp-val" style="color:#94a3b8">—</span>
+    </div>
+    <div class="health-item">
+      <span id="uptime-val" style="color:#94a3b8">—</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Device -->
+  <div class="card">
+    <div class="card-label">Device</div>
+    <div class="field-row">
+      <label>Name</label>
+      <input type="text" id="device-name" placeholder="Loading…" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary btn-sm" id="save-name-btn" onclick="saveName()">Save</button>
+    </div>
+    <div class="field-row">
+      <label>Output</label>
+      <select id="audio-device" onchange="onAudioDeviceChange(this.value)">
+        <option value="default">System Default (automatic)</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" id="apply-device-btn" onclick="applyAudioDevice()">Apply</button>
+    </div>
+    <div class="device-hint" id="audio-device-hint"></div>
+  </div>
+
+  <!-- Connection -->
+  <div class="card">
+    <div class="card-label">Connection</div>
+    <div class="field-row">
+      <label>Snapcast</label>
+      <input type="text" id="snapcast-host" placeholder="192.168.x.x" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary btn-sm" id="save-snapcast-btn" onclick="saveSnapcastHost()">Save</button>
+    </div>
+    <div class="field-row">
+      <label>API Key</label>
+      <input type="password" id="agent-api-key" placeholder="Not set — click Generate or enter a key" autocomplete="new-password" spellcheck="false">
+      <button class="btn btn-ghost btn-sm" id="toggle-key-vis-btn" onclick="toggleKeyVisibility()" title="Show/hide">👁</button>
+      <button class="btn btn-ghost btn-sm" onclick="generateApiKey()">Generate</button>
+      <button class="btn btn-primary btn-sm" id="save-key-btn" onclick="saveApiKey()">Save</button>
+    </div>
+    <div class="device-hint" id="api-key-hint"></div>
+  </div>
+
+  <!-- Master Volume -->
+  <div class="card" id="master-vol-card">
+    <div class="card-label">Master Volume</div>
+    <div class="vol-row">
+      <input type="range" class="vol-slider" id="alsa-slider" min="0" max="100" value="80">
+      <span class="vol-label" id="alsa-vol-label">—</span>
+      <button class="mute-btn" id="alsa-mute-btn" onclick="toggleAlsaMute()" title="Mute/Unmute">🔊</button>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <div class="services-row">
+
+    <!-- Spotify -->
+    <div class="card">
+      <div class="card-label">Spotify</div>
+      <div class="service-header">
+        <div class="service-left">
+          <span class="service-name">librespot</span>
+        </div>
+        <div class="service-right">
+          <button class="btn btn-ghost btn-sm" onclick="restartService('librespot')" title="Restart">↺</button>
+          <label class="toggle">
+            <input type="checkbox" id="librespot-toggle" onchange="toggleService('librespot', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="service-status-row">
+        <span class="dot" id="librespot-dot"></span>
+        <span class="state-text" id="librespot-state">—</span>
+      </div>
+    </div>
+
+    <!-- Snapcast -->
+    <div class="card">
+      <div class="card-label">Snapcast</div>
+      <div class="service-header">
+        <div class="service-left">
+          <span class="service-name">snapclient</span>
+        </div>
+        <div class="service-right">
+          <button class="btn btn-ghost btn-sm" onclick="restartService('snapclient')" title="Restart">↺</button>
+          <label class="toggle">
+            <input type="checkbox" id="snapclient-toggle" onchange="toggleService('snapclient', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="service-status-row">
+        <span class="dot" id="snapclient-dot"></span>
+        <span class="state-text" id="snapclient-state">—</span>
+      </div>
+      <div class="divider"></div>
+      <div class="snapcast-vol-label">Snapcast Volume</div>
+      <div id="snapcast-vol-section">
+        <div class="vol-row">
+          <input type="range" class="vol-slider" id="snap-slider" min="0" max="100" value="100">
+          <span class="vol-label" id="snap-vol-label">—</span>
+          <button class="mute-btn" id="snap-mute-btn" onclick="toggleSnapMute()" title="Mute/Unmute">🔊</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Update -->
+  <div class="card">
+    <div class="card-label">Update</div>
+    <div class="update-row">
+      <div class="version-info">
+        <div class="version-chip">
+          Running <code id="running-sha">—</code>
+        </div>
+        <div class="version-chip" id="latest-sha-chip" style="display:none">
+          Latest <code id="latest-sha">—</code>
+        </div>
+        <span class="update-badge unknown" id="update-badge">Checking…</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="update-btn" onclick="triggerUpdate()">Update Now</button>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let alsaMuted = false;
+  let snapMuted = false;
+  let alsaSupported = false;
+  let snapConnected = false;
+  let updatePending = false;
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  }
+
+  function fmtUptime(s) {
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d > 0) return `up ${d}d ${h}h`;
+    if (h > 0) return `up ${h}h ${m}m`;
+    return `up ${m}m`;
+  }
+
+  function toast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show' + (isError ? ' error' : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = '', 2800);
+  }
+
+  function setBar(barId, pct) {
+    const fill = document.getElementById(barId);
+    fill.style.width = pct + '%';
+    fill.className = 'health-bar-fill' + (pct >= 90 ? ' crit' : pct >= 75 ? ' warn' : '');
+  }
+
+  // ── System health ──────────────────────────────────────────────────────────
+  async function fetchSystem() {
+    try {
+      const res = await fetch('/api/system');
+      if (!res.ok) return;
+      const d = await res.json();
+      setBar('cpu-bar',  d.cpu_percent);  document.getElementById('cpu-val').textContent  = d.cpu_percent.toFixed(0) + '%';
+      setBar('ram-bar',  d.ram_percent);  document.getElementById('ram-val').textContent  = d.ram_percent.toFixed(0) + '%';
+      setBar('disk-bar', d.disk_percent); document.getElementById('disk-val').textContent = d.disk_percent.toFixed(0) + '%';
+      document.getElementById('temp-val').textContent   = d.temperature_c != null ? d.temperature_c + '°C' : '';
+      document.getElementById('uptime-val').textContent = fmtUptime(d.uptime_seconds);
+    } catch (_) {}
+  }
+
+  // ── Main status ────────────────────────────────────────────────────────────
+  async function fetchStatus() {
+    try {
+      const res = await fetch('/api/status');
+      if (!res.ok) return;
+      const d = await res.json();
+      applyStatus(d);
+    } catch (_) {}
+  }
+
+  function applyStatus(d) {
+    // Header
+    const nameInput = document.getElementById('device-name');
+    if (document.activeElement !== nameInput) nameInput.value = d.device_name;
+    document.getElementById('header-device').textContent = d.device_name;
+
+    // Snapcast host (don't overwrite while editing)
+    const snapHostInput = document.getElementById('snapcast-host');
+    if (document.activeElement !== snapHostInput) snapHostInput.value = d.snapcast_host || '';
+
+    // API key hint
+    const keyInput = document.getElementById('agent-api-key');
+    const keyHint  = document.getElementById('api-key-hint');
+    if (d.api_key_set) {
+      keyHint.textContent = 'API key is set — enter a new value to replace it';
+      if (document.activeElement !== keyInput && !keyInput.value) keyInput.placeholder = '••••••••••••••••';
+    } else {
+      keyHint.textContent = 'No API key set — machine-facing endpoints are open on your LAN';
+    }
+
+    // Audio device selector (don't overwrite while open)
+    const sel = document.getElementById('audio-device');
+    if (!sel.matches(':focus')) {
+      sel.value = d.audio_device;
+      onAudioDeviceChange(d.audio_device);
+    }
+
+    // Services
+    for (const [name, info] of Object.entries(d.services)) {
+      const dot    = document.getElementById(`${name}-dot`);
+      const state  = document.getElementById(`${name}-state`);
+      const toggle = document.getElementById(`${name}-toggle`);
+      const trans  = ['STARTING', 'STOPPING'].includes(info.state);
+      const err    = ['FATAL', 'BACKOFF'].includes(info.state);
+
+      dot.className = 'dot' + (info.running ? ' running' : '') + (trans ? ' transitioning' : '') + (err ? ' error' : '');
+      state.textContent = info.state.charAt(0) + info.state.slice(1).toLowerCase();
+      if (!toggle.matches(':active')) {
+        toggle.checked  = info.running;
+        toggle.disabled = trans;
+      }
+    }
+
+    // ALSA volume
+    const alsa = d.alsa_volume;
+    alsaSupported = alsa.supported;
+    const masterCard = document.getElementById('master-vol-card');
+    if (!alsa.supported) {
+      masterCard.style.display = 'none';
+    } else {
+      masterCard.style.display = '';
+      if (alsa.percent != null) {
+        const slider = document.getElementById('alsa-slider');
+        if (!slider.matches(':active')) slider.value = alsa.percent;
+        document.getElementById('alsa-vol-label').textContent = alsa.percent + '%';
+        updateSliderTrack(slider);
+      }
+      alsaMuted = alsa.muted ?? false;
+      document.getElementById('alsa-mute-btn').textContent = alsaMuted ? '🔇' : '🔊';
+    }
+
+    // Snapcast volume
+    const snap = d.snapcast_volume;
+    snapConnected = snap.connected;
+    const snapSection = document.getElementById('snapcast-vol-section');
+    if (!snap.connected || snap.percent == null) {
+      snapSection.innerHTML = '<p class="snapcast-disconnected">Not connected to Snapcast server</p>';
+    } else {
+      if (!snapSection.querySelector('.vol-row')) {
+        snapSection.innerHTML = `
+          <div class="vol-row">
+            <input type="range" class="vol-slider" id="snap-slider" min="0" max="100" value="100">
+            <span class="vol-label" id="snap-vol-label">—</span>
+            <button class="mute-btn" id="snap-mute-btn" onclick="toggleSnapMute()" title="Mute/Unmute">🔊</button>
+          </div>`;
+        document.getElementById('snap-slider').addEventListener('input', onSnapSliderInput);
+        document.getElementById('snap-slider').addEventListener('change', onSnapSliderChange);
+      }
+      const slider = document.getElementById('snap-slider');
+      if (slider && !slider.matches(':active')) slider.value = snap.percent;
+      const label = document.getElementById('snap-vol-label');
+      if (label) label.textContent = snap.percent + '%';
+      if (slider) updateSliderTrack(slider);
+      snapMuted = snap.muted ?? false;
+      const muteBtn = document.getElementById('snap-mute-btn');
+      if (muteBtn) muteBtn.textContent = snapMuted ? '🔇' : '🔊';
+    }
+
+    // Update SHA display
+    document.getElementById('running-sha').textContent = d.image_sha || '—';
+  }
+
+  // ── Audio device dropdown ──────────────────────────────────────────────────
+  let _deviceMap = {};  // value → {hint, type, label}
+
+  function onAudioDeviceChange(value) {
+    const d = _deviceMap[value];
+    document.getElementById('audio-device-hint').textContent = d ? d.hint : '';
+  }
+
+  async function loadAudioDevices() {
+    try {
+      const res = await fetch('/api/audio/devices');
+      const devices = await res.json();
+      _deviceMap = Object.fromEntries(devices.map(d => [d.value, d]));
+      const sel = document.getElementById('audio-device');
+      const current = sel.value;
+      sel.innerHTML = devices.map(d =>
+        `<option value="${d.value}">${d.label}</option>`
+      ).join('');
+      sel.value = current || 'default';
+      onAudioDeviceChange(sel.value);
+    } catch (_) {}
+  }
+
+  async function applyAudioDevice() {
+    const btn = document.getElementById('apply-device-btn');
+    const device = document.getElementById('audio-device').value;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio_device: device }),
+      });
+      if (!res.ok) throw new Error();
+      toast('Audio device applied — services restarting');
+    } catch (_) {
+      toast('Failed to apply audio device', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Device name ────────────────────────────────────────────────────────────
+  async function saveName() {
+    const input = document.getElementById('device-name');
+    const btn   = document.getElementById('save-name-btn');
+    const name  = input.value.trim();
+    if (!name) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_name: name }),
+      });
+      if (!res.ok) throw new Error();
+      document.getElementById('header-device').textContent = name;
+      toast('Device name saved');
+    } catch (_) {
+      toast('Failed to save', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Snapcast host ──────────────────────────────────────────────────────────
+  async function saveSnapcastHost() {
+    const input = document.getElementById('snapcast-host');
+    const btn   = document.getElementById('save-snapcast-btn');
+    const host  = input.value.trim();
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapcast_host: host }),
+      });
+      if (!res.ok) throw new Error();
+      toast('Snapcast server saved — snapclient restarting');
+    } catch (_) {
+      toast('Failed to save', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── API key ────────────────────────────────────────────────────────────────
+  function toggleKeyVisibility() {
+    const input = document.getElementById('agent-api-key');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  function generateApiKey() {
+    const arr = new Uint8Array(24);
+    crypto.getRandomValues(arr);
+    const key = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    const input = document.getElementById('agent-api-key');
+    input.value = key;
+    input.type = 'text';
+  }
+
+  async function saveApiKey() {
+    const input = document.getElementById('agent-api-key');
+    const btn   = document.getElementById('save-key-btn');
+    const key   = input.value.trim();
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_api_key: key }),
+      });
+      if (!res.ok) throw new Error();
+      input.value = '';
+      input.type = 'password';
+      toast(key ? 'API key saved' : 'API key cleared');
+      await fetchStatus();
+    } catch (_) {
+      toast('Failed to save', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Services ───────────────────────────────────────────────────────────────
+  async function toggleService(name, enabled) {
+    const toggle = document.getElementById(`${name}-toggle`);
+    toggle.disabled = true;
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`${name}_enabled`]: enabled }),
+      });
+      if (!res.ok) throw new Error();
+      await fetchStatus();
+    } catch (_) {
+      toggle.checked = !enabled;
+      toast('Failed to update service', true);
+    } finally {
+      toggle.disabled = false;
+    }
+  }
+
+  async function restartService(name) {
+    toast(`Restarting ${name}…`);
+    try {
+      await fetch(`/api/services/${name}/restart`, { method: 'POST' });
+      setTimeout(fetchStatus, 1500);
+    } catch (_) {
+      toast('Restart failed', true);
+    }
+  }
+
+  // ── ALSA volume ────────────────────────────────────────────────────────────
+  function updateSliderTrack(slider) {
+    const pct = slider.value;
+    slider.style.background = `linear-gradient(to right, #6366f1 ${pct}%, #e2e8f0 ${pct}%)`;
+  }
+
+  const sendAlsaVolume = debounce(async (pct) => {
+    await fetch('/api/audio/volume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ percent: parseInt(pct) }),
+    });
+  }, 400);
+
+  document.getElementById('alsa-slider').addEventListener('input', function () {
+    document.getElementById('alsa-vol-label').textContent = this.value + '%';
+    updateSliderTrack(this);
+    sendAlsaVolume(this.value);
+  });
+
+  async function toggleAlsaMute() {
+    alsaMuted = !alsaMuted;
+    document.getElementById('alsa-mute-btn').textContent = alsaMuted ? '🔇' : '🔊';
+    await fetch('/api/audio/volume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ muted: alsaMuted }),
+    });
+  }
+
+  // ── Snapcast volume ────────────────────────────────────────────────────────
+  const sendSnapVolume = debounce(async (pct) => {
+    await fetch('/api/snapcast/volume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ percent: parseInt(pct) }),
+    });
+  }, 400);
+
+  function onSnapSliderInput() {
+    const label = document.getElementById('snap-vol-label');
+    if (label) label.textContent = this.value + '%';
+    updateSliderTrack(this);
+    sendSnapVolume(this.value);
+  }
+  function onSnapSliderChange() { sendSnapVolume(this.value); }
+
+  async function toggleSnapMute() {
+    snapMuted = !snapMuted;
+    const btn = document.getElementById('snap-mute-btn');
+    if (btn) btn.textContent = snapMuted ? '🔇' : '🔊';
+    await fetch('/api/snapcast/volume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ muted: snapMuted }),
+    });
+  }
+
+  // Bind slider events (they may also be re-created by applyStatus)
+  (function bindSnap() {
+    const s = document.getElementById('snap-slider');
+    if (s) {
+      s.addEventListener('input',  onSnapSliderInput);
+      s.addEventListener('change', onSnapSliderChange);
+    }
+  })();
+
+  // ── Update ─────────────────────────────────────────────────────────────────
+  async function checkUpdate() {
+    const badge = document.getElementById('update-badge');
+    try {
+      const res = await fetch('/api/update/check');
+      const d   = await res.json();
+      document.getElementById('running-sha').textContent = d.running_sha || '—';
+
+      const latestChip = document.getElementById('latest-sha-chip');
+      if (d.latest_sha) {
+        latestChip.style.display = '';
+        document.getElementById('latest-sha').textContent = d.latest_sha;
+      }
+
+      if (d.update_available === true) {
+        badge.className   = 'update-badge available';
+        badge.textContent = 'Update available';
+      } else if (d.update_available === false) {
+        badge.className   = 'update-badge current';
+        badge.textContent = 'Up to date ✓';
+      } else {
+        badge.className   = 'update-badge unknown';
+        badge.textContent = 'Check failed';
+      }
+    } catch (_) {
+      badge.className   = 'update-badge unknown';
+      badge.textContent = 'Offline';
+    }
+  }
+
+  async function triggerUpdate() {
+    if (updatePending) return;
+    updatePending = true;
+
+    const btn   = document.getElementById('update-btn');
+    const badge = document.getElementById('update-badge');
+    btn.disabled = true;
+    badge.className   = 'update-badge updating';
+    badge.textContent = 'Updating…';
+
+    try {
+      await fetch('/api/update', { method: 'POST' });
+    } catch (_) {}
+
+    toast('Container restarting — reconnecting…');
+
+    // Poll health until the container comes back
+    await new Promise(r => setTimeout(r, 6000));
+    const deadline = Date.now() + 120_000;
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch('/api/health');
+        if (r.ok) {
+          toast('Update complete — reloading');
+          await new Promise(r2 => setTimeout(r2, 1000));
+          window.location.reload();
+          return;
+        }
+      } catch (_) {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    toast('Timed out — please refresh', true);
+    updatePending = false;
+    btn.disabled  = false;
+    badge.className   = 'update-badge unknown';
+    badge.textContent = 'Timed out';
+  }
+
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+  document.getElementById('device-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveName();
+  });
+
+  // ── Init & polling ─────────────────────────────────────────────────────────
+  (async function init() {
+    await loadAudioDevices();
+    await fetchStatus();
+    fetchSystem();
+    checkUpdate();
+
+    setInterval(fetchStatus, 5_000);
+    setInterval(fetchSystem, 30_000);
+  })();
+</script>
+
+</body>
+</html>

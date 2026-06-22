@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Read a single key from a JSON config file.
+
+Usage: read-config <path> <key> [default]
+"""
+import json
+import sys
+
+
+def main() -> None:
+    if len(sys.argv) < 3:
+        sys.exit("usage: read-config <path> <key> [default]")
+    path, key = sys.argv[1], sys.argv[2]
+    default = sys.argv[3] if len(sys.argv) > 3 else ""
+    try:
+        with open(path) as f:
+            print(json.load(f).get(key, default))
+    except Exception:
+        print(default)
+
+
+main()
