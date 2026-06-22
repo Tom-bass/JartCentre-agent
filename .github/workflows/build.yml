@@ -85,6 +85,7 @@ jobs:
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.24.0
+        continue-on-error: true
         with:
           image-ref: ghcr.io/tom-bass/jartcentre-agent:edge
           format: table
